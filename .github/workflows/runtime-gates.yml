@@ -99,7 +99,7 @@ jobs:
         run: |
           LOG=$(find app/build -name "TEST-*.xml" -path "*Connected*" | head -1 || true)
           {
-            echo "## Embedded runtime gates"
+            echo "# Embedded runtime gates"
             echo '```'
             grep -h "result=" "$LOG" | sed 's/<[^>]*>//g' || echo "(no gate lines found)"
             echo '```'
@@ -109,6 +109,35 @@ jobs:
             echo "::error::One or more runtime gates FAILED — stop and investigate that exact failure."
             exit 1
           fi
+
+      - name: Expose gate report publicly (always)
+        if: always()
+        env:
+          REPORT: |
+            # Embedded runtime gates — run ${{ github.run_id }} (${{ github.ref_name }})
+            ```
+            LOG=$(find app/build -name "TEST-*.xml" -path "*Connected*" | head -1 || true)
+            grep -h "result=" "$LOG" | sed 's/<[^>]*>//g' || echo "(no gate lines found)"
+            ```
+        run: |
+          set -e
+          echo "$REPORT" > /tmp/gate-summary.md
+          LOG=$(find app/build -name "TEST-*.xml" -path "*Connected*" | head -1 || true)
+          {
+            echo "# Embedded runtime gates — run ${{ github.run_id }} (${{ github.ref_name }})"
+            echo "- conclusion: ${{ job.status }}"
+            echo '```'
+            grep -h "result=" "$LOG" | sed 's/<[^>]*>//g' || echo "(no gate lines found)"
+            echo '```'
+          } > /tmp/gate-summary.md
+
+          git config user.name  "gate-bot"
+          git config user.email "actions@github.com"
+          git switch --orphan _report
+          cp /tmp/gate-summary.md ./index.md
+          git add index.md
+          git commit -qm "gate summary for run ${{ github.run_id }}"
+          git push -f origin HEAD:gate-report
 
       - uses: actions/upload-artifact@v4
         if: always()
