@@ -1,0 +1,2 @@
+# CI populates the rootfs bundle here (opencode-rootfs-arm64.tar.gz + manifests).
+*.tar.gz

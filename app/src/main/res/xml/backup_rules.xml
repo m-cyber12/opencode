@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<full-backup-content>
+    <!-- Never back up credentials or app state -->
+    <exclude domain="sharedpref" path="opencode_secure.xml" />
+    <exclude domain="file" path="datastore" />
+</full-backup-content>
