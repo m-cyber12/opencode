@@ -1,0 +1,77 @@
+# versions.lock — pinned runtime artifacts for OpenCode for Android
+# This file is the single source of truth consumed by:
+#   - scripts/build-runtime.sh        (canonical CI builder, linux/arm64)
+#   - tools/rootfs-builder/build.mjs  (host-side fallback builder, no Linux required)
+#   - app build (runtime integrity verification at install time)
+#
+# Every artifact is pinned by version AND sha256. Bump deliberately.
+
+[metadata]
+format = 1
+updated = 2026-08-26
+abi = arm64-v8a
+
+[opencode]
+version = 1.18.23
+repo = https://github.com/anomalyco/opencode
+artifact = opencode-linux-arm64-musl.tar.gz
+url = https://github.com/anomalyco/opencode/releases/download/v1.18.23/opencode-linux-arm64-musl.tar.gz
+sha256 = 0f618c0d40815f6c4f04d723a8e4a1dd7f5f539f57a0a21b854460bf0e5e1d91
+notes = Single-file Bun-compiled binary. ELF64 AArch64, interpreter /lib/ld-musl-aarch64.so.1. Verified: no external rg/git/node spawn required for core agent loop; requires shell + musl from rootfs.
+
+[alpine]
+version = 3.24.1
+flavor = minirootfs
+arch = aarch64
+url = https://dl-cdn.alpinelinux.org/alpine/v3.24/releases/aarch64/alpine-minirootfs-3.24.1-aarch64.tar.gz
+sha256 = f55a90f69052c5bd6f92cb09a8f47065970830b194c917a006fb94028e721259
+repositories = v3.24/main,v3.24/community
+
+[rootfs-packages]
+# Pinned Alpine packages layered onto the minirootfs at build time.
+# Versions resolved against the pinned alpine repositories during build and
+# recorded into the produced manifest (see runtime/artifacts).
+git = latest-in-v3.24
+bash = latest-in-v3.24
+ripgrep = latest-in-v3.24
+nodejs = latest-in-v3.24
+npm = latest-in-v3.24
+openssh-client = latest-in-v3.24
+ca-certificates = latest-in-v3.24
+tzdata = latest-in-v3.24
+coreutils = latest-in-v3.24
+tar = latest-in-v3.24
+gzip = latest-in-v3.24
+xz = latest-in-v3.24
+zstd = latest-in-v3.24
+
+[proot]
+# Primary: built from source in CI (Android-hardened fork by Termux).
+source-repo = https://github.com/termux/proot
+source-ref = 7266fb3
+build = scripts/build-proot.sh
+linkage = static (musl), aarch64, max-page-size=16384
+# Fallback (used only if source build unavailable): upstream static release.
+fallback-version = 5.3.0
+fallback-url = https://github.com/proot-me/proot/releases/download/v5.3.0/proot-v5.3.0-aarch64-static
+fallback-sha256 = pending-download-verification
+notes = PROOT_NO_SECCOMP=1 auto-fallback handled by RuntimeManager crash classifier (termux/proot commit 61681c6).
+
+[runtime-bundle]
+container = rootfs.tar.gz
+layout-version = 1
+contents =
+    /            (alpine minirootfs base)
+    /usr/local/bin/opencode          (pinned release binary)
+    /usr/bin/proot-host-info         (marker file only; proot itself ships as APK jniLib libproot.so)
+    /etc/resolv.conf                 (generated on-device at extraction)
+    /etc/opencode-android-release    (bundle metadata + hashes)
+verification = SHA-256 of container recorded in app assets runtime/rootfs.sha256 and checked before extraction.
+
+[android]
+minSdk = 26
+targetSdk = 28
+compileSdk = 35
+abi = arm64-v8a
+exec-model = targetSdk<=28 SELinux domain untrusted_app_27 grants execute_no_trans on app_data_file;
+  proot itself is executed from apk nativeLibraryDir (apk_data_file) which is executable at any targetSdk.

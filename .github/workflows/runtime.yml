@@ -1,0 +1,63 @@
+name: Build Runtime Artifacts (arm64)
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'scripts/build-runtime.sh'
+      - 'scripts/build-proot.sh'
+      - 'versions.lock'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build-runtime:
+    name: Build rootfs + proot (ubuntu-24.04-arm)
+    runs-on: ubuntu-24.04-arm
+    timeout-minutes: 60
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install build deps
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y musl-dev gcc jq
+
+      - name: Build proot
+        run: |
+          cd scripts
+          ./build-proot.sh
+
+      - name: Build rootfs
+        run: |
+          cd scripts
+          ./build-runtime.sh
+
+      - name: Verify artifacts
+        run: |
+          ls -lh runtime/artifacts/
+          sha256sum runtime/artifacts/rootfs.tar.gz
+          cat runtime/artifacts/rootfs.sha256
+
+      - name: Upload runtime artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: opencode-runtime-arm64
+          path: runtime/artifacts/
+          retention-days: 30
+
+      - name: Create release (main branch only)
+        if: github.ref == 'refs/heads/main'
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: runtime-${{ github.run_number }}
+          name: "OpenCode Runtime ${{ github.run_number }}"
+          files: |
+            runtime/artifacts/rootfs.tar.gz
+            runtime/artifacts/rootfs.sha256
+            runtime/artifacts/rootfs.manifest.json
+            runtime/artifacts/libproot.so
+          draft: false
+          prerelease: true
