@@ -1,0 +1,14 @@
+{
+  "name": "opencode-rootfs-builder",
+  "version": "1.0.0",
+  "description": "Host-side Alpine rootfs builder for OpenCode Android (no Linux host required)",
+  "type": "module",
+  "main": "build-rootfs.mjs",
+  "scripts": {
+    "build": "node build-rootfs.mjs --out-dir=../../runtime/artifacts"
+  },
+  "dependencies": {
+    "tar": "^7.4.0"
+  },
+  "engines": { "node": ">=20" }
+}
