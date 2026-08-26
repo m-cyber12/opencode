@@ -1,3 +1,0 @@
-# CI populates this directory with libopx-proot.so and libopx-proot-loader.so
-# (built by runtime/build-proot.sh). Never commit binaries.
-*.so
